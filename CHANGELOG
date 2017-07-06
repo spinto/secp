@@ -1,0 +1,99 @@
+Changelog:
+version 1.0
+      * first release
+version 1.1
+      * add the -f option to force a local copy of the file in case of nfs driver
+      * add the handling of the new return message of gridftp server "No such file or directory"
+version 1.2
+      * corrected mkdir with -p flag when creating output directory
+version 1.3
+      * changed the -R flag semantic for the opposite to retry on timeout by default
+
+version 2.0 2008-05-17
+      * added support for scp and for http, https and ftp via wget
+      * improved error handling in particular for nfs and gridftp drivers
+      * improved message logging to stderr
+      * use of logApp function to log messages if available, unless LOG_FUNCTION variable is defined
+      * add -q (quiet) option to suppress echo of local filenames to stdout
+      * add -O option to force file or directory overrides in output directory (default is to not override)
+      * add -w (work directory) option to specify working directory (defaulting to /tmp)
+      * add watchdog for secp hangs in particular for gridftp or wget transfers (-t and -R options)
+      * add unpacking support for .tar, .tgz, .tar.gz, .Z, tar.Z, .bz, .bz2, .tbz, .tar.bz, .tar.bz2, .zip
+      * add support for uar (url archive) type unpacking
+      * add -c -p and -b options 
+      * add -z option
+version 2.1 2008-07-16 by Emmanuel Mathot
+      * removed -fast option
+version 2.2
+      * corrected mkdir with -p flag when creating the tmp input file directory
+      * added the gsiftp driver (same of gridftp)
+      * added the cache driver
+version 2.3
+      * added https driver with curl (for gridsite support)
+      * removed http driver with GET (outdated)
+      * modified usage
+      * removed ams driver (outdated)
+version 2.3.1
+      * fixed error parsing for https driver
+version 2.4
+      * added automatic uncompression of .gz files. If you want to disable it, you need to add the -z option
+      * added s3 driver
+      * added s (skip) option
+
+version 3.0
+      * rewritten for performances (removed external log function support) - more than 10 times faster
+      * removed dependency on bash_debug.sh watchdog and log function
+      * added long opt support. Multiple options with one - is not supported anymore (ex. -co is not supported, shall be -c -o)
+      * removed -b, -Z, -w option. Not used anymore.
+      * -D option is deprecated. Debug can be now performed using standard bash debugging tools (sh -x)
+      * timeout (-t option) is now expressed in seconds
+      * secp now uncompress the files even if .gz or .tgz is written in the URI, since the new catalog
+        contains URIs with the .gz and .tgz suffix, this is needed for retro compatibility of the services.
+        This can be disabled with the new -U option. Moreover, for performance issues, secp will try adding only the
+        .gz extension if the file do not exist, and not all the others.
+      * added possibility to follow RDF and HTML auto-refresh meta-tag and HREF links for support to the new cache ws protocol
+        and for direct download from the G-POD catalogue. This can be disabled using the new -H option.
+      * removed support for un-compression of tar.gz, .Z, tar.Z, .bz, .bz2, .tbz, .tar.bz, .tar.bz2 files (not used anymore)
+      * retries (-r) and timeouts (-t) are now handled by the drivers (for performance issues)
+      * added -rt option to setup delay between retries
+      * removed WGET dependency, using curl insthead
+version 3.0.1
+      * added -w option (set-up tmp directory base for drivers)
+      * added -co -qo -qco for retro-compatibility.
+version 3.0.2
+      * unzip support for multiple files in the zip
+version 3.1
+      * merged with ciop-tool version 3.0.0
+      * added FILE driver support for directories copy (from ciop-tool, with -x switch to exclude files in the copy)
+      * added HDFS driver (from ciop-tool)
+      * added support for EO-SSO login followup and HTTP basic authentication
+      * added support for credeltials storing in the user home
+      * added support for session cookies (for cURL driver)
+      * fixed https proxy authentication for SL6
+version 3.1.1
+      * fixed minor bugs
+      * added -F for URL load from file list
+version 3.1.2
+      * fixed unzip folder detection plus other minor fixes
+version 3.1.3
+      * fixed EO-SSO support for test servers
+      * fixed minor bugs
+version 3.2.0
+      * added support for ATOM and Metalink file listing local and remote decoding
+      * file lists (-F) can be now accessed from remote addresses
+      * added parallel download support (-P) with optional multiple credentials (-PC)
+      * http driver now recognizes correctly 401 error and ask for credentials if not supplied 
+      * fixed multiple bugs in handling of abnormal termination, loading of credentails, etc...
+      * added -J flag to support remote file name resolution by the driver, this is enabled automatically
+        if the URI does not contain a file name. The http driver is the only one to support this feature for now
+      * added support for EO Data Gateway authentication
+      * added support for X509 certificate and proxy credentials (-X flag)
+      * added support for XML Retry-After tags follow-up
+      * fixed HTML follow-up to better support HREF
+      * extended -x to file lists
+version 3.2.1
+      * fix due to EO-SSO update
+version 3.2.2
+      * added compatibility with dos filelists
+      * fix bug on handling remote file lists (uses now the file command to determine the type of remote file)
+      * added functionality to access files with HTTP POST
