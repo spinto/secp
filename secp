@@ -961,7 +961,7 @@ while [[ -n "$_INPUT_URI" ]]; do
         echo "[ERROR  ][secp][auth] Failed to login into EO IAM. Invalid response received." 1>&2
         eval "$ON_ERROR"
       fi
-      curl -b $_SESSION_FILE -c $_SESSION_FILE -L -k -f -s -S "$REDR_ADDR" --data "$REDIR_DATA" -o $_LOCAL_FILE
+      curl -b $_SESSION_FILE -c $_SESSION_FILE -L -k -f -s -S "$REDIR_ADDR" --data "$REDIR_DATA" -o $_LOCAL_FILE
       res=$?
 
     elif grep -q 'login.php?rediurl=' $_LOCAL_FILE; then
