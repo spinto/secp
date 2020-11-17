@@ -13,13 +13,14 @@ Tool works on a generic Linux distribution or on Windows (for windows, you need 
 
 ## Features
 
-* Support for download from most of the ESA data archives and catalogues (SciHub, SMOS, VA4, ESAR, MERCI, etc...)
+* Download from most of the ESA data archives and catalogues (SciHub, OADS, SMOS, VA4, ESAR, MERCI, etc...)
 * Parallel downloads (optionally with multiple credentials)
 * Support for ftp, scp, http, https, gridftp, hadoopfs, file and nfs.
-* Support for HTTP/FTP basic auth (e.g. SciHub), ESA's EO-SSO, EO Data Gateway authentication
-* Built-in credentials and session manager
+* Support for HTTP/FTP basic auth (e.g. SciHub), ESA's EO-SSO, IAM and EO Data Gateway authentication
+* Support for basic, ESA's EO-SSO, IAM and EO Data Gateway authentication
+* Credentials and session manager
 * Automatic unpackaging of files
-* Support for file lists in metalink, ATOM (@rel=enclosure), RDF, HTML (meta-refresh and href-tags), UAR (url textual file lists)
+* Support for file lists in metalink, ATOM (@rel=enclosure), RDF, HTML, (meta-refresh and href-tags), UAR (url textual file lists)
 
 ## Installation
 
@@ -46,17 +47,22 @@ Some more complicated examples are:
 * Download the SMOS L2 products from 2016-09-01 to 2016-09-30
 ```shell
 ./secp -U -F 'https://smos-diss.eo.esa.int/socat/NRT_Open/search|service=SimpleOnlineCatalogue&version=1.0&request=search&format=text%2Fplain&pageCount=50&query.beginAcquisition.start=2016-09-01&query.beginAcquisition.stop=2016-09-30&query.productType=MIR_SMNRT2'
+```
+* Download a product from OADS
+```shell
+./secp 'https://eoiam-oads.eo.esa.int/oads/data/RapidEye_SouthAmerica/RE__OPER_MSI_IMG_3A_20150727T143335_S25-908_W054-484_4140.SIP.ZIP'
 ```     
 ## Advanced Usage
 ```shell
 [spinto@demo] ./secp -h
+secp version 3.2.3
 Usage:
 secp  [options] <url1> [<url2> ... <urlN>]
 
 URL Parameters:
       Arguments are URL strings provided. If a parameter is specified as '-', URLs are read
       from standard input
- 
+
 Options:
       -h               displays this help page
       -a               abort on first error without attempting to process further URLs
@@ -66,7 +72,7 @@ Options:
                        ATOM file.
       -d <driver-file> get additional drivers from shell file <driver-file>. Drivers shall contain
                        a named <protocol>Driver
-      -o|O <out-dir>   defines the output directory for transfers (default is $PWD)
+      -o|O <out-dir>   defines the output directory for transfers (default is /root/secp)
                        with -O the sink files or directories possibly existing in the output
                        directory will be overwritten.
       -s               skip download if sink path already exists
@@ -111,7 +117,7 @@ Notes:
  *  Unless the -H options is specified, the software will follow Metalink, ATOM, RDF, HTML (href) and uar
     pages. the software will also follow HTTP meta-refresh and XML Retry-After tags
  *  The software will perform authentication if credentials are specified. Supported authentication types
-    are 'basic', X509, EO-SSO and EO Data gateway. Credentials are stored in the ~/.secp_cred file, session
+    are 'basic', X509, ESA's EO-SSO, IAM and EO Data gateway. Credentials are stored in the ~/.secp_cred file, session
     cookies are stored in the ~/.secp_sess file (use -K switch to disable this behaviour)
  *  If the url is an HTTP url, everyhting after the special '|' caracter will be sent via an HTTP POST
 
