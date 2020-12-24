@@ -12,7 +12,7 @@
 #       * Automatic unpackaging of files
 #       * Support for file lists in metalink, ATOM (@rel=enclosure), RDF, HTML, (meta-refresh and href-tags), UAR (url textual file lists)
 #
-# Dependencies: curl, scp, gawk, sed, bash, sha256sum, file, globus-url-copy [optional]
+# Dependencies: curl, scp, gawk, sed, bash, sha256sum, file, s3cmd [optional] globus-url-copy [optional]]
 # 
 # Changelog:
 # version 1.0
