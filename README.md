@@ -55,7 +55,7 @@ Some more complicated examples are:
 ## Advanced Usage
 ```shell
 [spinto@demo] ./secp -h
-secp version 3.2.3
+secp version 3.2.4
 Usage:
 secp  [options] <url1> [<url2> ... <urlN>]
 
@@ -72,7 +72,7 @@ Options:
                        ATOM file.
       -d <driver-file> get additional drivers from shell file <driver-file>. Drivers shall contain
                        a named <protocol>Driver
-      -o|O <out-dir>   defines the output directory for transfers (default is /root/secp)
+      -o|O <out-dir>   defines the output directory for transfers (default is the current directory)
                        with -O the sink files or directories possibly existing in the output
                        directory will be overwritten.
       -s               skip download if sink path already exists
@@ -126,6 +126,10 @@ Advanced usage examples:
      ./secp -J -co outdir -P 2 -F 'https://scihub.copernicus.eu/dhus/search?q=*&rows=5&start=0'
   * Download the SMOS L2 products from 2016-09-01 to 2016-09-30
      ./secp -U -F 'https://smos-diss.eo.esa.int/socat/NRT_Open/search|service=SimpleOnlineCatalogue&version=1.0&request=search&format=text%2Fplain&pageCount=50&query.beginAcquisition.start=2016-09-01&query.beginAcquisition.stop=2016-09-30&query.productType=MIR_SMNRT2'
+  * Download a product from OADS
+     ./secp 'https://oads.eo.esa.int/oads/data/RapidEye_SouthAmerica/RE__OPER_MSI_IMG_3A_20150727T143335_S25-908_W054-484_4140.SIP.ZIP'
+  * Download a produce from SMOS dissemination server
+     ./secp 'https://smos-diss.eo.esa.int/oads/data/SMOS_Open/SM_OPER_MIR_SMUDP2_20201215T003720_20201215T013032_650_001_1.nc'
 
 Exit codes:
       0      all URLs were successfully downloaded

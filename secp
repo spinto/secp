@@ -154,7 +154,7 @@ Options:
                        ATOM file.
       -d <driver-file> get additional drivers from shell file <driver-file>. Drivers shall contain
                        a named <protocol>Driver
-      -o|O <out-dir>   defines the output directory for transfers (default is $PWD)
+      -o|O <out-dir>   defines the output directory for transfers (default is the current directory)
                        with -O the sink files or directories possibly existing in the output
                        directory will be overwritten.
       -s               skip download if sink path already exists
