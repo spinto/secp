@@ -115,6 +115,8 @@
 #       * added functionality to access files with HTTP POST
 # version 3.2.3
 #       * added support for ESA EO IAM (Earth Observation Identity and Access Management System
+# version 3.2.4
+#       * fixed support for ESA EO IAM on SMOS dissemiantion server
 #
 # License:
 #  This program is free software: you can redistribute it and/or modify
@@ -130,7 +132,7 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-SECP_VERSION=3.2.3
+SECP_VERSION=3.2.4
 
 # Usage:
 function usage {
@@ -207,7 +209,9 @@ Advanced usage examples:
   * Download the SMOS L2 products from 2016-09-01 to 2016-09-30
      ./secp -U -F 'https://smos-diss.eo.esa.int/socat/NRT_Open/search|service=SimpleOnlineCatalogue&version=1.0&request=search&format=text%2Fplain&pageCount=50&query.beginAcquisition.start=2016-09-01&query.beginAcquisition.stop=2016-09-30&query.productType=MIR_SMNRT2'
   * Download a product from OADS
-     ./secp 'https://eoiam-oads.eo.esa.int/oads/data/RapidEye_SouthAmerica/RE__OPER_MSI_IMG_3A_20150727T143335_S25-908_W054-484_4140.SIP.ZIP'
+     ./secp 'https://oads.eo.esa.int/oads/data/RapidEye_SouthAmerica/RE__OPER_MSI_IMG_3A_20150727T143335_S25-908_W054-484_4140.SIP.ZIP'
+  * Download a produce from SMOS dissemination server
+     ./secp 'https://smos-diss.eo.esa.int/oads/data/SMOS_Open/SM_OPER_MIR_SMUDP2_20201215T003720_20201215T013032_650_001_1.nc'
 
 Exit codes:
       0      all URLs were successfully downloaded
@@ -950,18 +954,18 @@ while [[ -n "$_INPUT_URI" ]]; do
         eval "$ON_ERROR"
       fi
       if grep -q '<title>Earth Observation Identity and Access Management System</title>' $_LOCAL_FILE; then
-        echo "[ERROR  ][secp][auth] Failed to login into EO IAM. Please check your authentication credentials." 1>&2
+        echo "[ERROR  ][secp][auth] Failed to login into EO IAM. Please check your authentication credentials. If this is the first time you are accessing the service, probably you need to sign User Consent via the web interface." 1>&2
         eval "$ON_ERROR"
       fi
 
       #Redirect to IDP
       REDIR_ADDR="`sed -n 's|^.*<form method='\''post'\'' action='\''\([^'\'']*\)'\''>.*$|\1|p' $_LOCAL_FILE`"
-      REDIR_DATA="`gawk 'BEGIN{RS="<|>";FS="  *|'\''";for (i = 0; i <= 255; i++) {ord[sprintf("%c", i)] = i}}function escape(str, c, len, res) {len = length(str);res = "";for (i = 1; i <= len; i++){c = substr(str, i, 1);if (c ~ /[0-9A-Za-z]/){res = res c}else{res = res "%" sprintf("%02X", ord[c])}}return res}{if($1=="input"){for(i=2;i<NF;i++){if($i~/^name/){i++;while($i=="")i++;nm=$i}};for(i=2;i<NF;i++){if($i~/^value/){i++;while($i=="")i++;val=$i}};if(t==0){t=1}else{printf "&"}printf nm"="escape(val)}}' $_LOCAL_FILE`"
+      REDIR_DATA=( `gawk 'BEGIN{RS="<|>";FS="  *|'\''"}{if($1=="input"){for(i=2;i<NF;i++){if($i~/^name/){i++;while($i=="")i++;nm=$i}};for(i=2;i<NF;i++){if($i~/^value/){i++;while($i=="")i++;val=$i;gsub(/ /,"%20",val)}};printf "--data-urlencode "nm"="val" "}}' $_LOCAL_FILE` )
       if [[ -z "$REDIR_ADDR" || -z "$REDIR_DATA" ]]; then
         echo "[ERROR  ][secp][auth] Failed to login into EO IAM. Invalid response received." 1>&2
         eval "$ON_ERROR"
       fi
-      curl -b $_SESSION_FILE -c $_SESSION_FILE -L -k -f -s -S "$REDIR_ADDR" --data "$REDIR_DATA" -o $_LOCAL_FILE
+      curl -b $_SESSION_FILE -c $_SESSION_FILE -L -k -f -s -S "$REDIR_ADDR" "${REDIR_DATA[@]}" -o $_LOCAL_FILE
       res=$?
 
     elif grep -q 'login.php?rediurl=' $_LOCAL_FILE; then
