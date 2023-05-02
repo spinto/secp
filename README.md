@@ -55,7 +55,7 @@ Some more complicated examples are:
 ## Advanced Usage
 ```shell
 [spinto@demo] ./secp -h
-secp version 3.2.4
+secp version 3.2.5
 Usage:
 secp  [options] <url1> [<url2> ... <urlN>]
 
