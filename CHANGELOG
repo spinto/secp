@@ -97,3 +97,9 @@ version 3.2.2
       * added compatibility with dos filelists
       * fix bug on handling remote file lists (uses now the file command to determine the type of remote file)
       * added functionality to access files with HTTP POST
+version 3.2.3
+      * added support for ESA EO IAM (Earth Observation Identity and Access Management System
+version 3.2.4
+      * fixed support for ESA EO IAM on SMOS dissemiantion server
+version 3.2.5
+      * fixed support for ESA EO IAM on SMOS dissemiantion server (new login page)
