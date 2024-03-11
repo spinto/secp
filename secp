@@ -119,6 +119,8 @@
 #       * fixed support for ESA EO IAM on SMOS dissemiantion server
 # version 3.2.5
 #       * fixed support for ESA EO IAM on SMOS dissemiantion server (new login page)
+# version 3.2.6
+#       * fixed support for ESA EO IAM for ESA EO IAM reference server (new login page)
 #
 # License:
 #  This program is free software: you can redistribute it and/or modify
@@ -134,7 +136,7 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-SECP_VERSION=3.2.5
+SECP_VERSION=3.2.6
 
 # Usage:
 function usage {
@@ -300,7 +302,7 @@ while [[ "$#" -gt 0 ]]; do
    *) if [[ "$1" == "-" ]]; then
         _INPUT_URI="$_INPUT_URI `tr '\n' ' '`"
       elif [[ "${1:0:1}" == "-" ]]; then
-        echo "[ERROR  ][secp] Unnknown option: $1" 1>&2
+        echo "[ERROR  ][secp] Unknown option: $1" 1>&2
         exit 255
       else
         _INPUT_URI="$_INPUT_URI $1"
@@ -930,7 +932,7 @@ while [[ -n "$_INPUT_URI" ]]; do
       echo '[INFO   ][secp][auth] EO IAM login page detected. Logging in and re-downloading the file...'
 
       #Check if the page version and other pre-requisites
-      SSO_SESSKEY="`sed -n 's/.*<input type="hidden" name="sessionDataKey" value='\''\(.*\)'\''\/.*>/\1/p' $_LOCAL_FILE`"
+      SSO_SESSKEY="`gawk 'BEGIN{RS="[<>]"}{if($1=="input"){for(i=1;i<=NF;i++){if($i~/^name[ \n]*=[ \n"'\'']*sessionDataKey["'\'']/){for(i=1;i<=NF;i++){if($i~/^value=/){v=$i;gsub(/^value=[ \n"'\'']*/,"",v);gsub(/[\n"'\''/]*$/,"",v);printf v;exit}}}}}}' "$_LOCAL_FILE"`"
       if [[ -z "$SSO_SESSKEY" ]]; then
         echo "[ERROR  ][secp][auth] EO IAM page invalid. Missing session key." 1>&2
         eval "$ON_ERROR"
@@ -961,7 +963,7 @@ while [[ -n "$_INPUT_URI" ]]; do
       fi
 
       #Redirect to IDP
-      REDIR_ADDR="`sed -n 's|^.*<form method='\''post'\'' action='\''\([^'\'']*\)'\''>.*$|\1|p' $_LOCAL_FILE`"
+      REDIR_ADDR="`gawk 'BEGIN{RS="[<>]"}{if($1=="form"){for(i=1;i<=NF;i++){if($i~/^action[ ]*=/){v=$i;gsub(/^action=[ \n"'\'']*/,"",v);gsub(/[ \n"'\''/]*$/,"",v);print v;exit}}}}' $_LOCAL_FILE`"
       REDIR_DATA=( `gawk 'BEGIN{RS="<|>";FS="  *|'\''"}{if($1=="input"){for(i=2;i<NF;i++){if($i~/^name/){i++;while($i=="")i++;nm=$i}};for(i=2;i<NF;i++){if($i~/^value/){i++;while($i=="")i++;val=$i;gsub(/ /,"%20",val)}};printf "--data-urlencode "nm"="val" "}}' $_LOCAL_FILE` )
       if [[ -z "$REDIR_ADDR" || -z "$REDIR_DATA" ]]; then
         echo "[ERROR  ][secp][auth] Failed to login into EO IAM. Invalid response received." 1>&2

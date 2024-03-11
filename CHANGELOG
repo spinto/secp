@@ -103,3 +103,5 @@ version 3.2.4
       * fixed support for ESA EO IAM on SMOS dissemiantion server
 version 3.2.5
       * fixed support for ESA EO IAM on SMOS dissemiantion server (new login page)
+version 3.2.6
+      * fixed support for ESA EO IAM for ESA EO IAM reference server (new login page)
