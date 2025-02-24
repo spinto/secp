@@ -919,7 +919,7 @@ while [[ -n "$_INPUT_URI" ]]; do
       loadpass "$SSO_SERVER" true
 
       #Try to re-download the file (performing log in...)
-      curl -b $_SESSION_FILE -c $_SESSION_FILE -L -k -f -s -S "$IDP_ADDR" --data "cn=$_SERVER_USERNAME&password=$_SERVER_PASSWORD"'&loginFields=cn@password&loginMethod=umsso&sessionTime=untilbrowserclose&idleTime=oneday' -o $_LOCAL_FILE
+      curl -b $_SESSION_FILE -c $_SESSION_FILE -L -k -f -s -S "$IDP_ADDR" --data-urlencode "cn=$_SERVER_USERNAME" --data-urlencode "password=$_SERVER_PASSWORD" --data 'loginFields=cn@password&loginMethod=umsso&sessionTime=untilbrowserclose&idleTime=oneday' -o $_LOCAL_FILE
       res=$?
 
       #Check if you re-get the EO-SSO page
@@ -952,7 +952,7 @@ while [[ -n "$_INPUT_URI" ]]; do
       loadpass "$SSO_SERVER" true
 
       #Try to perform login
-      curl -b $_SESSION_FILE -c $_SESSION_FILE -L -k -f -s -S "$IDP_ADDR" --data "tocommonauth=true&username=$_SERVER_USERNAME&password=$_SERVER_PASSWORD&sessionDataKey=$SSO_SESSKEY" -o $_LOCAL_FILE
+      curl -b $_SESSION_FILE -c $_SESSION_FILE -L -k -f -s -S "$IDP_ADDR" --data "tocommonauth=true" --data-urlencode "username=$_SERVER_USERNAME" --data-urlencode "password=$_SERVER_PASSWORD" --data "sessionDataKey=$SSO_SESSKEY" -o $_LOCAL_FILE
       if [[ $? -ne 0 ]]; then
         echo "[ERROR  ][secp][auth] Failed to login into EO IAM. Cannot connect to the server." 1>&2
         eval "$ON_ERROR"
@@ -1009,7 +1009,7 @@ while [[ -n "$_INPUT_URI" ]]; do
       loadpass "$CRED_INDEX" true
       _SERVER_PASSWORD="`echo -n "$_SERVER_PASSWORD" | sha256sum | cut -d ' ' -f 1`"
       _SERVER_PASSWORD="`echo -n "$logintoken$_SERVER_PASSWORD" | sha256sum | cut -d ' ' -f 1`"
-      curl -b $_SESSION_FILE -c $_SESSION_FILE -L -k -f -s -S "$LOGIN_PAGE" --data "username=$_SERVER_USERNAME&password=$_SERVER_PASSWORD" -o $_LOCAL_FILE
+      curl -b $_SESSION_FILE -c $_SESSION_FILE -L -k -f -s -S "$LOGIN_PAGE" --data-urlencode "username=$_SERVER_USERNAME" --data-urlencode "password=$_SERVER_PASSWORD" -o $_LOCAL_FILE
       res=$?
 
       #Check if you re-get the login page
