@@ -121,6 +121,8 @@
 #       * fixed support for ESA EO IAM on SMOS dissemiantion server (new login page)
 # version 3.2.6
 #       * fixed support for ESA EO IAM for ESA EO IAM reference server (new login page)
+# version 3.2.7
+#       * fixed error when authenticating with special characters in username or password (thanks to Edward Baudrez) 
 #
 # License:
 #  This program is free software: you can redistribute it and/or modify
@@ -136,7 +138,7 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-SECP_VERSION=3.2.6
+SECP_VERSION=3.2.7
 
 # Usage:
 function usage {
