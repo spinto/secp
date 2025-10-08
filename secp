@@ -124,7 +124,7 @@
 # version 3.2.7
 #       * fixed error when authenticating with special characters in username or password (thanks to Edward Baudrez) 
 # version 3.3
-#       * added STAC support
+#       * added STAC support (for ESA MAAP and ESA PRR)
 #       * added authorization token support
 #
 # License:
@@ -181,7 +181,8 @@ Options:
                        gridftp, scp, ftp, http, and https schemes (default is 600 seconds)
       -R               do not retry transfer after timeout
       -H               do not follow file lists URLs. NOTE: By deafult, if a URL points to a metalink,
-                       uar, html and rdf, these are decoded and all the linked data is downloaded.
+                       uar, html, rdf, STAC FeatureCollection and STAC Collection these are decoded
+                       and all the linked data/assets is downloaded.
       -w <tmpdir>      set up temporary directory for drivers (default to /tmp)
       -x <pattern>     exclude the files matching the pattern (for directory input or file lists)
       -i <pattern>     include only the files matching the pattern (for directory input or file lists)
@@ -230,6 +231,8 @@ Advanced usage examples:
   * Download a set of assets (named product) from Biomass MAAP or other STAC catalogues. Note that this will ask you for a bearer token which you can download
     from 'https://portal.maap.eo.esa.int/ini/services/auth/token/'
      ./secp -iT product -F "https://catalog.maap.eo.esa.int/catalogue/search?collections=BiomassSimulated&productType=S3_SCS__1S" 
+  * Download a ESA PRR collection (all assets)
+     ./secp https://eoresults.esa.int/stac/collections/EXTRAIM_DAILY_PRECIPITATION
 
 Exit codes:
       0      all URLs were successfully downloaded
@@ -450,7 +453,7 @@ function parseurllist {
     #It seems to be a JSON. Check if it is a STAC
     which jq &>/dev/null || { echo "[ERROR  ][secp] STAC support requires \`jq\` to be installed. Please install it." 1>&2; exit 255; }
     if [[ "`jq -r .features[0].stac_version < $_LOCAL_FILE`" =~ 1\. ]]; then
-      #This is a STAC collection
+      #This is a STAC FeatureCollection
       echo "[INFO   ][secp] got local file is a STAC FeatureCollection. Will parse it." 1>&2
       if [[ -n "$_STAC_EXCLUDE_PATTERN" ]]; then
         URI_TO_FOLLOW="`jq -r ".features[].assets | with_entries(select(.key|test(\\"$_STAC_EXCLUDE_PATTERN\\")|not)) | .[] | .href" < $_LOCAL_FILE | tr '\n' ' '`"
@@ -459,18 +462,27 @@ function parseurllist {
       else
         URI_TO_FOLLOW="`jq -r ".features[].assets[].href" < $_LOCAL_FILE | tr '\n' ' '`"
       fi
+      #Add the next page (if any)
+      URI_TO_FOLLOW="$URI_TO_FOLLOW `jq -r '.links[] | select(.rel == "next") | .href' < $_LOCAL_FILE  | tr '\n' ' '`"
     elif [[ "`jq -r .stac_version < $_LOCAL_FILE`" =~ ^1\. ]]; then
-      #This is a single STAC file
-      if [[ -n "$_STAC_EXCLUDE_PATTERN" ]]; then
-        URI_TO_FOLLOW="`jq -r ".assets | with_entries(select(.key|test(\\"$_STAC_EXCLUDE_PATTERN\\")|not)) | .[] | .href" < $_LOCAL_FILE | tr '\n' ' '`"
-      elif [[ -n "$_STAC_INCLUDE_PATTERN" ]]; then
-        URI_TO_FOLLOW="`jq -r ".assets | with_entries(select(.key|test(\\"$_STAC_INCLUDE_PATTERN\\"))) | .[] | .href" < $_LOCAL_FILE | tr '\n' ' '`"
-      else
-        URI_TO_FOLLOW="`jq -r ".assets[].href" < $_LOCAL_FILE | tr '\n' ' '`"
+      if [[ "`jq -r .type < $_LOCAL_FILE`" == "Collection" ]]; then
+        #Follow the items links
+        URI_TO_FOLLOW="`jq -r '.links[] | select(.rel == "items") | .href' < $_LOCAL_FILE  | tr '\n' ' '`"
+      elif [[ "`jq -r .type < $_LOCAL_FILE`" == "Feature" ]]; then
+        #This is a single STAC Item
+        if [[ -n "$_STAC_EXCLUDE_PATTERN" ]]; then
+          URI_TO_FOLLOW="`jq -r ".assets | with_entries(select(.key|test(\\"$_STAC_EXCLUDE_PATTERN\\")|not)) | .[] | .href" < $_LOCAL_FILE | tr '\n' ' '`"
+        elif [[ -n "$_STAC_INCLUDE_PATTERN" ]]; then
+          URI_TO_FOLLOW="`jq -r ".assets | with_entries(select(.key|test(\\"$_STAC_INCLUDE_PATTERN\\"))) | .[] | .href" < $_LOCAL_FILE | tr '\n' ' '`"
+        else
+          URI_TO_FOLLOW="`jq -r ".assets[].href" < $_LOCAL_FILE | tr '\n' ' '`"
+        fi
       fi
-    else
-      #It is not a STAC file
-      URI_TO_FOLLOW=
+    fi
+    #Resolve relative URLs (if specified)
+    if [[ -n "$URI_TO_FOLLOW" ]]; then
+      SERVER_URI="${URI#*://}"; SERVER_URI="${URI%%://*}://${SERVER_URI%%/*}"
+      URI_TO_FOLLOW="`gawk -vb="${URI%/*}" -vs="$SERVER_URI" 'BEGIN{RS="[ \n\r]+"}{if($0!=""){if($0~"^[a-zA-z0-9]+://"){printf $0" "}else{if($0~"^/"){printf s$0" "}else{printf b"/"$0" "}}}}' <<<"$URI_TO_FOLLOW"`"
     fi
   fi
   if [[ -n "$_DIR_EXCLUDE_PATTERN" ]]; then
@@ -922,10 +934,10 @@ while [[ -n "$_INPUT_URI" ]]; do
   
   #Check if driver exists
   if [[ "`type -t $URI_DRIVER`" != "function" ]]; then
-	echo "[ERROR  ][secp][failed] protocol ${URI%%://*}:// not supported" 1>&2
-	rm -f $_LOCAL_FILE
-	res=1
-	eval "$ON_ERROR"    
+    echo "[ERROR  ][secp][failed] protocol ${URI%%://*}:// not supported" 1>&2
+    rm -f $_LOCAL_FILE
+    res=1
+    eval "$ON_ERROR"
   fi
 
   #Call the driver

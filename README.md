@@ -56,6 +56,10 @@ Some more complicated examples are:
 ```shell
 ./secp -iT product -F 'https://catalog.maap.eo.esa.int/catalogue/search?collections=BiomassSimulated&productType=S3_SCS__1S'
 ```
+* Download a ESA PRR collection (all assets)
+```shell
+./secp https://eoresults.esa.int/stac/collections/EXTRAIM_DAILY_PRECIPITATION
+```
 
 ## Advanced Usage
 ```shell
@@ -144,6 +148,8 @@ Advanced usage examples:
   * Download a set of assets (named product) from Biomass MAAP or other STAC catalogues. Note that this will ask you for a bearer token which you can download
     from 'https://portal.maap.eo.esa.int/ini/services/auth/token/'
      ./secp -iT product -F "https://catalog.maap.eo.esa.int/catalogue/search?collections=BiomassSimulated&productType=S3_SCS__1S"
+  * Download a ESA PRR collection (all assets)
+     ./secp https://eoresults.esa.int/stac/collections/EXTRAIM_DAILY_PRECIPITATION
 
 Exit codes:
       0      all URLs were successfully downloaded
