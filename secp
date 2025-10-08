@@ -123,6 +123,9 @@
 #       * fixed support for ESA EO IAM for ESA EO IAM reference server (new login page)
 # version 3.2.7
 #       * fixed error when authenticating with special characters in username or password (thanks to Edward Baudrez) 
+# version 3.3
+#       * added STAC support
+#       * added authorization token support
 #
 # License:
 #  This program is free software: you can redistribute it and/or modify
@@ -138,7 +141,7 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-SECP_VERSION=3.2.7
+SECP_VERSION=3.3
 
 # Usage:
 function usage {
@@ -156,8 +159,8 @@ Options:
       -a               abort on first error without attempting to process further URLs
       -q               quiet mode, local filenames are not echoed to stdout after transfer
       -f               force transfer of a physical copy of the file in case of nfs URLs
-      -F <url-list>    get URLs from a file. It can be a <url-list> file, a metalink file or an
-                       ATOM file.
+      -F <url-list>    get URLs from a file. It can be a <url-list> file, a metalink file, an
+                       ATOM file or a STAC Collection or STAC FeatureCollection url.
       -d <driver-file> get additional drivers from shell file <driver-file>. Drivers shall contain
                        a named <protocol>Driver
       -o|O <out-dir>   defines the output directory for transfers (default is the current directory)
@@ -180,7 +183,11 @@ Options:
       -H               do not follow file lists URLs. NOTE: By deafult, if a URL points to a metalink,
                        uar, html and rdf, these are decoded and all the linked data is downloaded.
       -w <tmpdir>      set up temporary directory for drivers (default to /tmp)
-      -x <pattern>     exclude the files matching the pattern for directory input or file lists
+      -x <pattern>     exclude the files matching the pattern (for directory input or file lists)
+      -i <pattern>     include only the files matching the pattern (for directory input or file lists)
+      -xT | -iT        same as -x or i, but applied to STAC asset keys (for STAC file lists)
+                       NOTE: -x and -i switch are mutually exclusive. If use togheter, -x will have
+                       priority and -i may be ignored.
       -K               private mode, disable storing of authentication session in ~/.secp_sess file
                        and passwords in the ~/.secp_cred file.
       -C <user>:<pass> force <user> and <pass> authentication (NOTE: these passwords will be stored
@@ -191,6 +198,8 @@ Options:
                        respectively the private and public proxy certificates. If <key> is not supplied,
                        <crt> is an X509 proxy certificate. (NOTE: the <crt> and <key> will be stored
                        in the ~/.secp_cred file. Use the -K flag if you want to avoid this behaviour.)
+      -B <token>       force usage of <token> as OIDC Access Token. (NOTE: the <token> will be stored
+                       in the ~/.secp_cred file. Use the -K flag if you want to avoid this behaviour.) 
       -P <num-worker>  enable parallel download with the <num-worker> number of workers. If download
                        requires username/password, you need to specify it within the command line,
                        include it into the ~/.secp_cred file or use the -PC option.
@@ -216,8 +225,11 @@ Advanced usage examples:
      ./secp -U -F 'https://smos-diss.eo.esa.int/socat/NRT_Open/search|service=SimpleOnlineCatalogue&version=1.0&request=search&format=text%2Fplain&pageCount=50&query.beginAcquisition.start=2016-09-01&query.beginAcquisition.stop=2016-09-30&query.productType=MIR_SMNRT2'
   * Download a product from OADS
      ./secp 'https://oads.eo.esa.int/oads/data/RapidEye_SouthAmerica/RE__OPER_MSI_IMG_3A_20150727T143335_S25-908_W054-484_4140.SIP.ZIP'
-  * Download a produce from SMOS dissemination server
+  * Download a product from SMOS dissemination server
      ./secp 'https://smos-diss.eo.esa.int/oads/data/SMOS_Open/SM_OPER_MIR_SMUDP2_20201215T003720_20201215T013032_650_001_1.nc'
+  * Download a set of assets (named product) from Biomass MAAP or other STAC catalogues. Note that this will ask you for a bearer token which you can download
+    from 'https://portal.maap.eo.esa.int/ini/services/auth/token/'
+     ./secp -iT product -F "https://catalog.maap.eo.esa.int/catalogue/search?collections=BiomassSimulated&productType=S3_SCS__1S" 
 
 Exit codes:
       0      all URLs were successfully downloaded
@@ -260,6 +272,9 @@ _OVERWRITE=false
 _SKIP_EXISTING_SINKS=false
 _TMP_DIR=/tmp
 _DIR_EXCLUDE_PATTERN=
+_DIR_INCLUDE_PATTERN=
+_STAC_EXCLUDE_PATTERN=
+_STAC_INCLUDE_PATTERN=
 _USER_USERNAME=
 _USER_PASSWORD=
 _AUTH_DATA_FILE="$HOME/.secp_cred"
@@ -294,11 +309,15 @@ while [[ "$#" -gt 0 ]]; do
    -J) _REMOTE_FILENAME=true; shift 1;;
    -H) _FOLLOW_HTML=false; shift 1 ;;
    -x) _DIR_EXCLUDE_PATTERN="$2"; shift 2 ;;
+   -i) _DIR_INCLUDE_PATTERN="$2"; shift 2 ;;
+   -xT) _STAC_EXCLUDE_PATTERN="$2"; shift 2 ;;
+   -iT) _STAC_INCLUDE_PATTERN="$2"; shift 2 ;;
    -w) _TMP_DIR="$2"; shift 2 ;;
    -h | --help) usage ;;
    -K) _SESSION_FILE=/dev/null; _AUTH_DATA_FILE=; shift 1 ;;
    -C) _USER_USERNAME="${2%%:*}"; _USER_PASSWORD="${2#*:}"; shift 2 ;;
    -X) p="${2%%:*}"; p2="${2#*:}"; if [[ $p == $p2 ]]; then X509_USER_PROXY="$p"; else X509_USER_CERT="$p"; X509_USER_KEY="$p2"; fi; p=;p2=; shift 2;;
+   -B) _USER_USERNAME="@@BEARER_TOKEN@@"; _USER_PASSWORD="$2"; shift 2;;
    -P) _PARALLEL_DOWNLOAD=$2; shift 2 ;;
    -PC) _PARALLEL_DOWNLOAD_CREDS=$2; _PARALLEL_DOWNLOAD=`wc -l <$2`; shift 2 ;;
    *) if [[ "$1" == "-" ]]; then
@@ -375,11 +394,15 @@ function loadpass {
 
   if [[ -z "$_SERVER_USERNAME" && -z "$_SERVER_PASSWORD" && "$2" == "true" && "$_QUIET" == "false" ]]; then
     #If credentials are mandatory, ask them to the user (if quiet mode is not specified)
-    echo "[INTER  ][secp] Credentials are mandatory for $CRED_INDEX. Please insert your username:" 1>&2
+    echo "[INTER  ][secp] Credentials are mandatory for $CRED_INDEX. Please insert your username, or insert '@@BEARER_TOKEN@@' if you want to use a HTTP Bearer token instead: " 1>&2
     read _SERVER_USERNAME
-    echo "[INTER  ][secp] And your password:" 1>&2
+    if [[ "$_SERVER_USERNAME" == "@@BEARER_TOKEN@@" ]]; then
+      echo "[INTER  ][secp] And your HTTP Bearer Token: " 1>&2
+    else
+      echo "[INTER  ][secp] And your password: " 1>&2
+    fi
     read -s _SERVER_PASSWORD
-    echo -n "[INTER  ][secp] Do you want to store your password? [y/n] (NOTE: username/password will be stored in clear text): " 1>&2
+    echo -n "[INTER  ][secp] Do you want to store your password/token? [y/n] (NOTE: username/password/token will be stored in clear text): " 1>&2
     read -n 1 YESNO
     echo "" 1>&2
     if [[ $YESNO == "y" ]]; then
@@ -423,10 +446,40 @@ function parseurllist {
   elif [[ "${URI##*.}" == "uar" || "$FB" == "https" || "$FB" == "http:" || "$FB" == "ftp:/" || "$FB" == "cache" || "$FB" == "gridf" || "$FB" == "s3://" || "$FB" == "nfs:/" || "$FB" == "file:" ]] && [[ "`file -b --mime-type $_LOCAL_FILE`" == "text/plain" ]]; then
     #If it is a .uar or a text file
     URI_TO_FOLLOW="`tr '\n' ' ' < $_LOCAL_FILE | tr -d '\r'`"
+  elif [[ "${FB:0:1}" == "{" ]]; then
+    #It seems to be a JSON. Check if it is a STAC
+    which jq &>/dev/null || { echo "[ERROR  ][secp] STAC support requires \`jq\` to be installed. Please install it." 1>&2; exit 255; }
+    if [[ "`jq -r .features[0].stac_version < $_LOCAL_FILE`" =~ 1\. ]]; then
+      #This is a STAC collection
+      echo "[INFO   ][secp] got local file is a STAC FeatureCollection. Will parse it." 1>&2
+      if [[ -n "$_STAC_EXCLUDE_PATTERN" ]]; then
+        URI_TO_FOLLOW="`jq -r ".features[].assets | with_entries(select(.key|test(\\"$_STAC_EXCLUDE_PATTERN\\")|not)) | .[] | .href" < $_LOCAL_FILE | tr '\n' ' '`"
+      elif [[ -n "$_STAC_INCLUDE_PATTERN" ]]; then
+        URI_TO_FOLLOW="`jq -r ".features[].assets | with_entries(select(.key|test(\\"$_STAC_INCLUDE_PATTERN\\"))) | .[] | .href" < $_LOCAL_FILE | tr '\n' ' '`"
+      else
+        URI_TO_FOLLOW="`jq -r ".features[].assets[].href" < $_LOCAL_FILE | tr '\n' ' '`"
+      fi
+    elif [[ "`jq -r .stac_version < $_LOCAL_FILE`" =~ ^1\. ]]; then
+      #This is a single STAC file
+      if [[ -n "$_STAC_EXCLUDE_PATTERN" ]]; then
+        URI_TO_FOLLOW="`jq -r ".assets | with_entries(select(.key|test(\\"$_STAC_EXCLUDE_PATTERN\\")|not)) | .[] | .href" < $_LOCAL_FILE | tr '\n' ' '`"
+      elif [[ -n "$_STAC_INCLUDE_PATTERN" ]]; then
+        URI_TO_FOLLOW="`jq -r ".assets | with_entries(select(.key|test(\\"$_STAC_INCLUDE_PATTERN\\"))) | .[] | .href" < $_LOCAL_FILE | tr '\n' ' '`"
+      else
+        URI_TO_FOLLOW="`jq -r ".assets[].href" < $_LOCAL_FILE | tr '\n' ' '`"
+      fi
+    else
+      #It is not a STAC file
+      URI_TO_FOLLOW=
+    fi
   fi
   if [[ -n "$_DIR_EXCLUDE_PATTERN" ]]; then
     #exclude patterns in the file list which we do not want to download
     URI_TO_FOLLOW="`tr ' ' '\n' <<<$URI_TO_FOLLOW | egrep -v "$_DIR_EXCLUDE_PATTERN" | tr '\n' ' '`"
+  fi
+  if [[ -n "$_DIR_INCLUDE_PATTERN" ]]; then
+    #include patterns in the file list which we do not want to download
+    URI_TO_FOLLOW="`tr ' ' '\n' <<<$URI_TO_FOLLOW | egrep "$_DIR_INCLUDE_PATTERN" | tr '\n' ' '`"
   fi
   if [[ "$URI_TO_FOLLOW" =~ ^refresh:// ]]; then
     #this is a meta-refresh
@@ -616,42 +669,46 @@ function cacheDriver()
 function curlDriver {
   local url="$1"
   outfile="$2"
-  curlopt="-s -S -b $_SESSION_FILE -c $_SESSION_FILE -L -f --connect-timeout $_CONNECTION_TIMEOUT --retry $_RETRY --retry-delay $_RETRY_SLEEP"
+  curlopt=( "-s" "-S" "-b" "$_SESSION_FILE" "-c" "$_SESSION_FILE" "-L" "-f" "--connect-timeout" "$_CONNECTION_TIMEOUT" "--retry" "$_RETRY" "--retry-delay" "$_RETRY_SLEEP" )
   if [[ -n "$_SERVER_PASSWORD" && -n "$_SERVER_USERNAME" ]]; then
-    curlopt="$curlopt -k --user $_SERVER_USERNAME:$_SERVER_PASSWORD"
+    if [[ "$_SERVER_USERNAME" == "@@BEARER_TOKEN@@" ]]; then
+      curlopt+=( "-k" "-H" "Authorization: Bearer $_SERVER_PASSWORD" )
+    else
+      curlopt+=( "-k" "--user" "$_SERVER_USERNAME:$_SERVER_PASSWORD" )
+    fi
   elif [[ -n "$X509_USER_PROXY" ]]; then
-    curlopt="$curlopt --cert $X509_USER_PROXY --key $X509_USER_PROXY --cacert $X509_USER_PROXY"
+    curlopt+=( "--cert" "$X509_USER_PROXY" "--key" "$X509_USER_PROXY" "--cacert" "$X509_USER_PROXY" )
     [[ -z "$X509_CERT_DIR" ]] && X509_CERT_DIR=/etc/grid-security/certificates/
-    [[ -d "$X509_CERT_DIR" ]] && curlopt="$curlopt --capath $X509_CERT_DIR"
+    [[ -d "$X509_CERT_DIR" ]] && curlopt+=( "--capath" "$X509_CERT_DIR" )
   elif [[ -n "$X509_USER_CERT" && -n "$X509_USER_KEY" ]]; then
-    curlopt="$curlopt --cert $X509_USER_CERT --key $X509_USER_KEY"
+    curlopt+=( "--cert" "$X509_USER_CERT" "--key" "$X509_USER_KEY" )
     [[ -z "$X509_CERT_DIR" ]] && X509_CERT_DIR=/etc/grid-security/certificates/
-    [[ -d "$X509_CERT_DIR" ]] && curlopt="$curlopt --capath $X509_CERT_DIR"
+    [[ -d "$X509_CERT_DIR" ]] && curlopt+=( "--capath" "$X509_CERT_DIR" )
   else
-    curlopt="$curlopt -k"
+    curlopt+=( "-k" )
   fi
   if [[ "$_REMOTE_FILENAME" == "true" ]]; then
     #use a temporary file for download and then remove it, also get the header for resolving the file name
     outfile="${2%/*}/tmpcurldown$RANDOM$RANDOM$RANDOM"
-    curlopt="$curlopt -D -"
+    curlopt+=( "-D" "-" )
   fi
   if [[ "${url#*|}" != "$url" ]]; then
     #perform a POST if you have a | in the url
-    curlopt="$curlopt --data ${url#*|}"
+    curlopt+=( "--data" "${url#*|}" )
     url="${url%%|*}"
   fi
 
   #Try to download the file
-  message="`curl $curlopt -o "$outfile" "$url" 2>&1`"
+  message="`curl "${curlopt[@]}" -o "$outfile" "$url" 2>&1`"
   res=$?
   if [[ "$res" -ne "0" ]]; then
     if [[ "${message/The requested URL returned error: 403//}" != "$message" || "${message/The requested URL returned error: 401//}" != "$message" ]]; then
       if [[ -n "$_SERVER_PASSWORD" && -n "$_SERVER_USERNAME" ]]; then
         #Cre3dentials are supplied but they are wrong, this is a fatal error
-        echo "[ERROR  ][secp] Forbidden. Please check your proxy certificate or your username/password." 1>&2
+        echo "[ERROR  ][secp] Forbidden. Please check your proxy certificate or your username/password/token." 1>&2
         res=130
       else
-        echo "[ERROR  ][secp] This URL requires proxy certificate or username/password." 1>&2
+        echo "[ERROR  ][secp] This URL requires proxy certificate or username/password/token." 1>&2
         res=2
       fi
     elif [[ "${message/The requested URL returned error: 404//}" != "$message" ]]; then
