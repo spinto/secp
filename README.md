@@ -54,7 +54,7 @@ Some more complicated examples are:
 ```
 * Download a set of "product" assets from Biomass MAAP or other STAC catalogues. Note that this will ask you for a bearer token which you can download from [ESA MAAP Portal](https://portal.maap.eo.esa.int/ini/services/auth/token/)
 ```shell
-./secp -iT product -F 'https://catalog.maap.eo.esa.int/catalogue/search?collections=BiomassSimulated&productType=S3_SCS__1S'
+./secp -J -iT product -F 'https://catalog.maap.eo.esa.int/catalogue/search?collections=BiomassSimulated&productType=S3_SCS__1S'
 ```
 * Download a ESA PRR collection (all assets)
 ```shell
@@ -147,7 +147,7 @@ Advanced usage examples:
      ./secp 'https://smos-diss.eo.esa.int/oads/data/SMOS_Open/SM_OPER_MIR_SMUDP2_20201215T003720_20201215T013032_650_001_1.nc'
   * Download a set of assets (named product) from Biomass MAAP or other STAC catalogues. Note that this will ask you for a bearer token which you can download
     from 'https://portal.maap.eo.esa.int/ini/services/auth/token/'
-     ./secp -iT product -F "https://catalog.maap.eo.esa.int/catalogue/search?collections=BiomassSimulated&productType=S3_SCS__1S"
+     ./secp -J -iT product -F "https://catalog.maap.eo.esa.int/catalogue/search?collections=BiomassSimulated&productType=S3_SCS__1S"
   * Download a ESA PRR collection (all assets)
      ./secp https://eoresults.esa.int/stac/collections/EXTRAIM_DAILY_PRECIPITATION
 
