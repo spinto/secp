@@ -13,14 +13,14 @@ Tool works on a generic Linux distribution or on Windows (for windows, you need 
 
 ## Features
 
-* Download from most of the ESA data archives and catalogues (SciHub, OADS, SMOS, VA4, ESAR, MERCI, etc...)
+* Download from most of the ESA data archives and catalogues (SciHub, OADS, SMOS, VA4, ESAR, MERCI, ASCEND, MAAP, etc...)
 * Parallel downloads (optionally with multiple credentials)
 * Support for ftp, scp, http, https, gridftp, hadoopfs, file and nfs.
 * Support for HTTP/FTP basic auth (e.g. SciHub), ESA's EO-SSO, IAM and EO Data Gateway authentication
-* Support for basic, ESA's EO-SSO, IAM and EO Data Gateway authentication
+* Support for basic, ESA's EO-SSO, IAM and EO Data Gateway, OIDC Bearer Token authentication
 * Credentials and session manager
 * Automatic unpackaging of files
-* Support for file lists in metalink, ATOM (@rel=enclosure), RDF, HTML, (meta-refresh and href-tags), UAR (url textual file lists)
+* Support for file lists in metalink, ATOM (@rel=enclosure), RDF, HTML, (meta-refresh and href-tags), UAR (url textual file lists), STAC Collection and STAC FeatureCollection
 
 ## Installation
 
@@ -51,11 +51,20 @@ Some more complicated examples are:
 * Download a product from OADS
 ```shell
 ./secp 'https://eoiam-oads.eo.esa.int/oads/data/RapidEye_SouthAmerica/RE__OPER_MSI_IMG_3A_20150727T143335_S25-908_W054-484_4140.SIP.ZIP'
-```     
+```
+* Download a set of "product" assets from Biomass MAAP or other STAC catalogues. Note that this will ask you for a bearer token which you can download from [ESA MAAP Portal](https://portal.maap.eo.esa.int/ini/services/auth/token/)
+```shell
+./secp -J -iT product -F 'https://catalog.maap.eo.esa.int/catalogue/search?collections=BiomassSimulated&productType=S3_SCS__1S'
+```
+* Download a ESA PRR collection (all assets)
+```shell
+./secp https://eoresults.esa.int/stac/collections/EXTRAIM_DAILY_PRECIPITATION
+```
+
 ## Advanced Usage
 ```shell
 [spinto@demo] ./secp -h
-secp version 3.2.5
+secp version 3.3
 Usage:
 secp  [options] <url1> [<url2> ... <urlN>]
 
@@ -68,8 +77,8 @@ Options:
       -a               abort on first error without attempting to process further URLs
       -q               quiet mode, local filenames are not echoed to stdout after transfer
       -f               force transfer of a physical copy of the file in case of nfs URLs
-      -F <url-list>    get URLs from a file. It can be a <url-list> file, a metalink file or an
-                       ATOM file.
+      -F <url-list>    get URLs from a file. It can be a <url-list> file, a metalink file, an
+                       ATOM file or a STAC Collection or STAC FeatureCollection url.
       -d <driver-file> get additional drivers from shell file <driver-file>. Drivers shall contain
                        a named <protocol>Driver
       -o|O <out-dir>   defines the output directory for transfers (default is the current directory)
@@ -92,7 +101,11 @@ Options:
       -H               do not follow file lists URLs. NOTE: By deafult, if a URL points to a metalink,
                        uar, html and rdf, these are decoded and all the linked data is downloaded.
       -w <tmpdir>      set up temporary directory for drivers (default to /tmp)
-      -x <pattern>     exclude the files matching the pattern for directory input or file lists
+      -x <pattern>     exclude the files matching the pattern (for directory input or file lists)
+      -i <pattern>     include only the files matching the pattern (for directory input or file lists)
+      -xT | -iT        same as -x or i, but applied to STAC asset keys (for STAC file lists)
+                       NOTE: -x and -i switch are mutually exclusive. If use togheter, -x will have
+                       priority and -i may be ignored.
       -K               private mode, disable storing of authentication session in ~/.secp_sess file
                        and passwords in the ~/.secp_cred file.
       -C <user>:<pass> force <user> and <pass> authentication (NOTE: these passwords will be stored
@@ -102,6 +115,8 @@ Options:
       -X <crt>[:<key>] force usage of X509 authentication. If <key> is supplied, <crt> and <key> are
                        respectively the private and public proxy certificates. If <key> is not supplied,
                        <crt> is an X509 proxy certificate. (NOTE: the <crt> and <key> will be stored
+                       in the ~/.secp_cred file. Use the -K flag if you want to avoid this behaviour.)
+      -B <token>       force usage of <token> as OIDC Access Token. (NOTE: the <token> will be stored
                        in the ~/.secp_cred file. Use the -K flag if you want to avoid this behaviour.)
       -P <num-worker>  enable parallel download with the <num-worker> number of workers. If download
                        requires username/password, you need to specify it within the command line,
@@ -128,8 +143,13 @@ Advanced usage examples:
      ./secp -U -F 'https://smos-diss.eo.esa.int/socat/NRT_Open/search|service=SimpleOnlineCatalogue&version=1.0&request=search&format=text%2Fplain&pageCount=50&query.beginAcquisition.start=2016-09-01&query.beginAcquisition.stop=2016-09-30&query.productType=MIR_SMNRT2'
   * Download a product from OADS
      ./secp 'https://oads.eo.esa.int/oads/data/RapidEye_SouthAmerica/RE__OPER_MSI_IMG_3A_20150727T143335_S25-908_W054-484_4140.SIP.ZIP'
-  * Download a produce from SMOS dissemination server
+  * Download a product from SMOS dissemination server
      ./secp 'https://smos-diss.eo.esa.int/oads/data/SMOS_Open/SM_OPER_MIR_SMUDP2_20201215T003720_20201215T013032_650_001_1.nc'
+  * Download a set of assets (named product) from Biomass MAAP or other STAC catalogues. Note that this will ask you for a bearer token which you can download
+    from 'https://portal.maap.eo.esa.int/ini/services/auth/token/'
+     ./secp -J -iT product -F "https://catalog.maap.eo.esa.int/catalogue/search?collections=BiomassSimulated&productType=S3_SCS__1S"
+  * Download a ESA PRR collection (all assets)
+     ./secp https://eoresults.esa.int/stac/collections/EXTRAIM_DAILY_PRECIPITATION
 
 Exit codes:
       0      all URLs were successfully downloaded
