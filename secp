@@ -482,7 +482,7 @@ function parseurllist {
     #Resolve relative URLs (if specified)
     if [[ -n "$URI_TO_FOLLOW" ]]; then
       SERVER_URI="${URI#*://}"; SERVER_URI="${URI%%://*}://${SERVER_URI%%/*}"
-      URI_TO_FOLLOW="`gawk -vb="${URI%/*}" -vs="$SERVER_URI" 'BEGIN{RS="[ \n\r]+"}{if($0!=""){if($0~"^[a-zA-z0-9]+://"){printf $0" "}else{if($0~"^/"){printf s$0" "}else{printf b"/"$0" "}}}}' <<<"$URI_TO_FOLLOW"`"
+      URI_TO_FOLLOW="`gawk -vb="${URI%/*}" -vs="$SERVER_URI" 'BEGIN{RS="[ \n\r]+";FS=""}{if($0!=""){if($0~"^[a-zA-z0-9]+://"){printf("%s ",$0)}else{if($0~"^/"){printf("%s%s ",s,$0)}else{printf("%s/%s ",b,$0)}}}}' <<<"$URI_TO_FOLLOW"`"
     fi
   fi
   if [[ -n "$_DIR_EXCLUDE_PATTERN" ]]; then
