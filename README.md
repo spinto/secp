@@ -26,7 +26,7 @@ Tool works on a generic Linux distribution or on Windows (for windows, you need 
 
 Download the [secp](https://github.com/spinto/secp/raw/master/secp) script, and run it. In summary:
 ```shell
-curl https://github.com/spinto/secp/raw/master/secp -o secp
+curl -L https://github.com/spinto/secp/raw/master/secp -o secp
 chmod +x secp
 ./secp
 ```
