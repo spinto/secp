@@ -52,6 +52,14 @@ Some more complicated examples are:
 ```shell
 ./secp 'https://eoiam-oads.eo.esa.int/oads/data/RapidEye_SouthAmerica/RE__OPER_MSI_IMG_3A_20150727T143335_S25-908_W054-484_4140.SIP.ZIP'
 ```
+* Download a product from Biomass MAAP. Note that this will ask you for credentials. You will need to set `@@REFRESH_TOKEN@@` as username and a token generated from [ESA MAAP Portal](https://portal.maap.eo.esa.int/ini/services/auth/token/) as your OIDC Refresh token
+```shell
+./secp 'https://catalog.maap.eo.esa.int/data/biomass-pdgs-01/BiomassSimulated/2017/03/03/BIO_S3_SCS__1S_20170303T094537_20170303T094558_I_G01_M02_C03_T017_F001_01_DBEN28/BIO_S3_SCS__1S_20170303T094537_20170303T094558_I_G01_M02_C03_T017_F001_01_DBEN28/measurement/bio_s3_scs__1s_20170303t094537_20170303t094558_i_g01_m02_c03_t017_f001_i_abs.tiff'
+```
+* Download a set of assets (named product) from Biomass MAAP or other STAC catalogues. Note that this will ask you for credentials. You will need to set `@@REFRESH_TOKEN@@` as username and a token generated from [ESA MAAP Portal](https://portal.maap.eo.esa.int/ini/services/auth/token/) as your OIDC Refresh token
+```shell
+./secp -J -iT product -F "https://catalog.maap.eo.esa.int/catalogue/search?collections=BiomassSimulated&productType=S3_SCS__1S"
+```
 * Download a set of "product" assets from Biomass MAAP or other STAC catalogues. Note that this will ask you for a bearer token which you can download from [ESA MAAP Portal](https://portal.maap.eo.esa.int/ini/services/auth/token/)
 ```shell
 ./secp -J -iT product -F 'https://catalog.maap.eo.esa.int/catalogue/search?collections=BiomassSimulated&productType=S3_SCS__1S'
@@ -64,7 +72,7 @@ Some more complicated examples are:
 ## Advanced Usage
 ```shell
 [spinto@demo] ./secp -h
-secp version 3.3
+secp version 3.3.1
 Usage:
 secp  [options] <url1> [<url2> ... <urlN>]
 
@@ -99,7 +107,8 @@ Options:
                        gridftp, scp, ftp, http, and https schemes (default is 600 seconds)
       -R               do not retry transfer after timeout
       -H               do not follow file lists URLs. NOTE: By deafult, if a URL points to a metalink,
-                       uar, html and rdf, these are decoded and all the linked data is downloaded.
+                       uar, html, rdf, STAC FeatureCollection and STAC Collection these are decoded
+                       and all the linked data/assets is downloaded.
       -w <tmpdir>      set up temporary directory for drivers (default to /tmp)
       -x <pattern>     exclude the files matching the pattern (for directory input or file lists)
       -i <pattern>     include only the files matching the pattern (for directory input or file lists)
@@ -116,8 +125,11 @@ Options:
                        respectively the private and public proxy certificates. If <key> is not supplied,
                        <crt> is an X509 proxy certificate. (NOTE: the <crt> and <key> will be stored
                        in the ~/.secp_cred file. Use the -K flag if you want to avoid this behaviour.)
-      -B <token>       force usage of <token> as OIDC Access Token. (NOTE: the <token> will be stored
+      -B <token>       force usage of <token> as Bearer token. (NOTE: the <token> will be stored
                        in the ~/.secp_cred file. Use the -K flag if you want to avoid this behaviour.)
+      -Br <token>      force use of <token> as OIDC Refresh token. The details of the authentication
+                       realm will be guessed authomatically, but can also be specified using the extended
+                       OIDC Refresh token format: <url>:<client_id>:<client_secret>:<refresh_token>
       -P <num-worker>  enable parallel download with the <num-worker> number of workers. If download
                        requires username/password, you need to specify it within the command line,
                        include it into the ~/.secp_cred file or use the -PC option.
@@ -145,8 +157,13 @@ Advanced usage examples:
      ./secp 'https://oads.eo.esa.int/oads/data/RapidEye_SouthAmerica/RE__OPER_MSI_IMG_3A_20150727T143335_S25-908_W054-484_4140.SIP.ZIP'
   * Download a product from SMOS dissemination server
      ./secp 'https://smos-diss.eo.esa.int/oads/data/SMOS_Open/SM_OPER_MIR_SMUDP2_20201215T003720_20201215T013032_650_001_1.nc'
-  * Download a set of assets (named product) from Biomass MAAP or other STAC catalogues. Note that this will ask you for a bearer token which you can download
-    from 'https://portal.maap.eo.esa.int/ini/services/auth/token/'
+  * Download a product from Biomass MAAP. Note that this will ask you for credentials.
+    You will need to set @@REFRESH_TOKEN@@ as username and a token generated from 'https://portal.maap.eo.esa.int/ini/services/auth/token/'
+    as your OIDC Refresh token
+     ./secp 'https://catalog.maap.eo.esa.int/data/biomass-pdgs-01/BiomassSimulated/2017/03/03/BIO_S3_SCS__1S_20170303T094537_20170303T094558_I_G01_M02_C03_T017_F001_01_DBEN28/BIO_S3_SCS__1S_20170303T094537_20170303T094558_I_G01_M02_C03_T017_F001_01_DBEN28/measurement/bio_s3_scs__1s_20170303t094537_20170303t094558_i_g01_m02_c03_t017_f001_i_abs.tiff'
+  * Download a set of assets (named product) from Biomass MAAP or other STAC catalogues. Note that this will ask you for credentials.
+    You will need to set @@REFRESH_TOKEN@@ as username and a token generated from 'https://portal.maap.eo.esa.int/ini/services/auth/token/'
+    as your OIDC Refresh token
      ./secp -J -iT product -F "https://catalog.maap.eo.esa.int/catalogue/search?collections=BiomassSimulated&productType=S3_SCS__1S"
   * Download a ESA PRR collection (all assets)
      ./secp https://eoresults.esa.int/stac/collections/EXTRAIM_DAILY_PRECIPITATION

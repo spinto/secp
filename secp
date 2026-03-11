@@ -126,6 +126,8 @@
 # version 3.3
 #       * added STAC support (for ESA MAAP and ESA PRR)
 #       * added authorization token support
+# version 3.3.1
+#       * added support for refresh OIDC tokens (for new ESA MAAP authentication)
 #
 # License:
 #  This program is free software: you can redistribute it and/or modify
@@ -141,7 +143,7 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-SECP_VERSION=3.3
+SECP_VERSION=3.3.1
 
 # Usage:
 function usage {
@@ -199,8 +201,11 @@ Options:
                        respectively the private and public proxy certificates. If <key> is not supplied,
                        <crt> is an X509 proxy certificate. (NOTE: the <crt> and <key> will be stored
                        in the ~/.secp_cred file. Use the -K flag if you want to avoid this behaviour.)
-      -B <token>       force usage of <token> as OIDC Access Token. (NOTE: the <token> will be stored
-                       in the ~/.secp_cred file. Use the -K flag if you want to avoid this behaviour.) 
+      -B <token>       force usage of <token> as Bearer token. (NOTE: the <token> will be stored
+                       in the ~/.secp_cred file. Use the -K flag if you want to avoid this behaviour.)
+      -Br <token>      force use of <token> as OIDC Refresh token. The details of the authentication
+                       realm will be guessed authomatically, but can also be specified using the extended
+                       OIDC Refresh token format: <url>:<client_id>:<client_secret>:<refresh_token>
       -P <num-worker>  enable parallel download with the <num-worker> number of workers. If download
                        requires username/password, you need to specify it within the command line,
                        include it into the ~/.secp_cred file or use the -PC option.
@@ -228,8 +233,13 @@ Advanced usage examples:
      ./secp 'https://oads.eo.esa.int/oads/data/RapidEye_SouthAmerica/RE__OPER_MSI_IMG_3A_20150727T143335_S25-908_W054-484_4140.SIP.ZIP'
   * Download a product from SMOS dissemination server
      ./secp 'https://smos-diss.eo.esa.int/oads/data/SMOS_Open/SM_OPER_MIR_SMUDP2_20201215T003720_20201215T013032_650_001_1.nc'
-  * Download a set of assets (named product) from Biomass MAAP or other STAC catalogues. Note that this will ask you for a bearer token which you can download
-    from 'https://portal.maap.eo.esa.int/ini/services/auth/token/'
+  * Download a product from Biomass MAAP. Note that this will ask you for credentials.
+    You will need to set @@REFRESH_TOKEN@@ as username and a token generated from 'https://portal.maap.eo.esa.int/ini/services/auth/token/'
+    as your OIDC Refresh token
+     ./secp 'https://catalog.maap.eo.esa.int/data/biomass-pdgs-01/BiomassSimulated/2017/03/03/BIO_S3_SCS__1S_20170303T094537_20170303T094558_I_G01_M02_C03_T017_F001_01_DBEN28/BIO_S3_SCS__1S_20170303T094537_20170303T094558_I_G01_M02_C03_T017_F001_01_DBEN28/measurement/bio_s3_scs__1s_20170303t094537_20170303t094558_i_g01_m02_c03_t017_f001_i_abs.tiff'
+  * Download a set of assets (named product) from Biomass MAAP or other STAC catalogues. Note that this will ask you for credentials.
+    You will need to set @@REFRESH_TOKEN@@ as username and a token generated from 'https://portal.maap.eo.esa.int/ini/services/auth/token/'
+    as your OIDC Refresh token
      ./secp -J -iT product -F "https://catalog.maap.eo.esa.int/catalogue/search?collections=BiomassSimulated&productType=S3_SCS__1S" 
   * Download a ESA PRR collection (all assets)
      ./secp https://eoresults.esa.int/stac/collections/EXTRAIM_DAILY_PRECIPITATION
@@ -321,6 +331,7 @@ while [[ "$#" -gt 0 ]]; do
    -C) _USER_USERNAME="${2%%:*}"; _USER_PASSWORD="${2#*:}"; shift 2 ;;
    -X) p="${2%%:*}"; p2="${2#*:}"; if [[ $p == $p2 ]]; then X509_USER_PROXY="$p"; else X509_USER_CERT="$p"; X509_USER_KEY="$p2"; fi; p=;p2=; shift 2;;
    -B) _USER_USERNAME="@@BEARER_TOKEN@@"; _USER_PASSWORD="$2"; shift 2;;
+   -Br) _USER_USERNAME="@@REFRESH_TOKEN@@"; _USER_PASSWORD="$2"; shift 2;;
    -P) _PARALLEL_DOWNLOAD=$2; shift 2 ;;
    -PC) _PARALLEL_DOWNLOAD_CREDS=$2; _PARALLEL_DOWNLOAD=`wc -l <$2`; shift 2 ;;
    *) if [[ "$1" == "-" ]]; then
@@ -397,10 +408,12 @@ function loadpass {
 
   if [[ -z "$_SERVER_USERNAME" && -z "$_SERVER_PASSWORD" && "$2" == "true" && "$_QUIET" == "false" ]]; then
     #If credentials are mandatory, ask them to the user (if quiet mode is not specified)
-    echo "[INTER  ][secp] Credentials are mandatory for $CRED_INDEX. Please insert your username, or insert '@@BEARER_TOKEN@@' if you want to use a HTTP Bearer token instead: " 1>&2
+    echo "[INTER  ][secp] Credentials are mandatory for $CRED_INDEX. Please insert your username, or insert '@@BEARER_TOKEN@@' if you want to use a HTTP Bearer token or '@@REFRESH_TOKEN@@' if you want to use an OIDC Refresh token instead: " 1>&2
     read _SERVER_USERNAME
     if [[ "$_SERVER_USERNAME" == "@@BEARER_TOKEN@@" ]]; then
       echo "[INTER  ][secp] And your HTTP Bearer Token: " 1>&2
+    elif [[ "$_SERVER_USERNAME" == "@@REFRESH_TOKEN@@" ]]; then
+      echo "[INTER  ][secp] And your OIDC Refresh Token: " 1>&2
     else
       echo "[INTER  ][secp] And your password: " 1>&2
     fi
@@ -685,6 +698,36 @@ function curlDriver {
   if [[ -n "$_SERVER_PASSWORD" && -n "$_SERVER_USERNAME" ]]; then
     if [[ "$_SERVER_USERNAME" == "@@BEARER_TOKEN@@" ]]; then
       curlopt+=( "-k" "-H" "Authorization: Bearer $_SERVER_PASSWORD" )
+    elif [[ "$_SERVER_USERNAME" == "@@REFRESH_TOKEN@@" ]]; then
+      if [[ "${_SERVER_PASSWORD/:/}" == "$_SERVER_PASSWORD" ]]; then
+        #Standard realms from URL
+	if [[ "$url" =~ ^https?://[^.]*.maap.eo.esa.int/ ]]; then
+          _SERVER_OIDC_URL="https://iam.maap.eo.esa.int/realms/esa-maap/protocol/openid-connect/token"
+	  _SERVER_OIDC_CLIENT_ID="offline-token"
+	  _SERVER_OIDC_CLIENT_SECRET="p1eL7uonXs6MDxtGbgKdPVRAmnGxHpVE"
+	else
+          echo "[ERROR  ][secp] Cannot determine OIDC parameters for url, use extended OIDC Refresh token format (see help)." 1>&2
+          return 130
+	fi
+      else
+	_SERVER_PARSED_TOKEN=( ${_SERVER_PASSWORD//:/ } )
+        _SERVER_OIDC_URL=${_SERVER_PARSED_TOKEN[0]}
+	_SERVER_OIDC_CLIENT_ID=${_SERVER_PARSED_TOKEN[1]}
+	_SERVER_OIDC_CLIENT_SECRET=${_SERVER_PARSED_TOKEN[2]}
+      fi
+      #Get the bearer token
+      message="`curl "${curlopt[@]}" -d "client_id=$_SERVER_OIDC_CLIENT_ID" -d "client_secret=$_SERVER_OIDC_CLIENT_SECRET" -d "grant_type=refresh_token" -d "refresh_token=$_SERVER_PASSWORD" -d "scope=offline_access openid" "$_SERVER_OIDC_URL" 2>&1`"
+      res=$?
+      if [[ "$res" -ne "0" ]]; then
+	echo "[ERROR  ][secp] Failed to authenticate to OIDC server. Your OIDC Refresh token may have expired, set new token using the -Br flag." 1>&2
+        return 130
+      fi
+      access_token="`sed -n 's/.*"access_token"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' <<<"$message"`"
+      if [[ -z "$access_token" ]]; then
+	echo "[ERROR  ][secp] Invalid response from OIDC server. Something is wrong..." 1>&2
+        return 130
+      fi
+      curlopt+=( "-k" "-H" "Authorization: Bearer $access_token" )
     else
       curlopt+=( "-k" "--user" "$_SERVER_USERNAME:$_SERVER_PASSWORD" )
     fi
@@ -716,7 +759,7 @@ function curlDriver {
   if [[ "$res" -ne "0" ]]; then
     if [[ "${message/The requested URL returned error: 403//}" != "$message" || "${message/The requested URL returned error: 401//}" != "$message" ]]; then
       if [[ -n "$_SERVER_PASSWORD" && -n "$_SERVER_USERNAME" ]]; then
-        #Cre3dentials are supplied but they are wrong, this is a fatal error
+        #Credentials are supplied but they are wrong, this is a fatal error
         echo "[ERROR  ][secp] Forbidden. Please check your proxy certificate or your username/password/token." 1>&2
         res=130
       else
