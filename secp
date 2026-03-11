@@ -236,7 +236,7 @@ Advanced usage examples:
   * Download a product from Biomass MAAP. Note that this will ask you for credentials.
     You will need to set @@REFRESH_TOKEN@@ as username and a token generated from 'https://portal.maap.eo.esa.int/ini/services/auth/token/'
     as your OIDC Refresh token
-     ./secp 'https://catalog.maap.eo.esa.int/data/biomass-pdgs-01/BiomassSimulated/2017/03/03/BIO_S3_SCS__1S_20170303T094537_20170303T094558_I_G01_M02_C03_T017_F001_01_DBEN28/BIO_S3_SCS__1S_20170303T094537_20170303T094558_I_G01_M02_C03_T017_F001_01_DBEN28/measurement/bio_s3_scs__1s_20170303t094537_20170303t094558_i_g01_m02_c03_t017_f001_i_abs.tiff'
+     ./secp -J 'https://catalog.maap.eo.esa.int/data/biomass-pdgs-01/BiomassSimulated/2017/03/03/BIO_S3_SCS__1S_20170303T094537_20170303T094558_I_G01_M02_C03_T017_F001_01_DBEN28/BIO_S3_SCS__1S_20170303T094537_20170303T094558_I_G01_M02_C03_T017_F001_01_DBEN28/measurement/bio_s3_scs__1s_20170303t094537_20170303t094558_i_g01_m02_c03_t017_f001_i_abs.tiff'
   * Download a set of assets (named product) from Biomass MAAP or other STAC catalogues. Note that this will ask you for credentials.
     You will need to set @@REFRESH_TOKEN@@ as username and a token generated from 'https://portal.maap.eo.esa.int/ini/services/auth/token/'
     as your OIDC Refresh token
